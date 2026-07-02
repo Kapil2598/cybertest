@@ -1,0 +1,121 @@
+name: Node.js CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Test and Build
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      MONGO_URL: mongodb://127.0.0.1:27017/express_stream_ci
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run checks
+        run: npm test
+
+      - name: Smoke test server
+        run: |
+          npm start &
+          APP_PID=$!
+          sleep 8
+          curl --fail http://127.0.0.1:${PORT}/
+          kill $APP_PID
+
+      - name: Package release artifact
+        run: |
+          mkdir -p artifact
+          tar \
+            --exclude='./artifact' \
+            --exclude='./node_modules' \
+            --exclude='./.git' \
+            --exclude='./.env' \
+            -czf artifact/app.tar.gz .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: express-mongoose-stream-app
+          path: artifact/app.tar.gz
+
+  deploy:
+    name: Deploy to Server
+    needs: ci
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      APP_DIR: ${{ secrets.APP_DIR }}
+      MONGO_URL: ${{ secrets.MONGO_URL }}
+      PORT: ${{ secrets.PORT }}
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: express-mongoose-stream-app
+          path: artifact
+
+      - name: Skip deploy when server secrets are missing
+        if: env.SSH_HOST == '' || env.SSH_USER == '' || env.SSH_KEY == '' || env.APP_DIR == '' || env.MONGO_URL == ''
+        run: |
+          echo "Deployment skipped. Add SSH_HOST, SSH_USER, SSH_KEY, APP_DIR, and MONGO_URL repository secrets to enable deployment."
+
+      - name: Deploy over SSH
+        if: env.SSH_HOST != '' && env.SSH_USER != '' && env.SSH_KEY != '' && env.APP_DIR != '' && env.MONGO_URL != ''
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          scp -i ~/.ssh/deploy_key artifact/app.tar.gz "$SSH_USER@$SSH_HOST:/tmp/express-mongoose-stream-app.tar.gz"
+          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" "
+            set -e
+            mkdir -p '$APP_DIR'
+            tar -xzf /tmp/express-mongoose-stream-app.tar.gz -C '$APP_DIR'
+            cd '$APP_DIR'
+            npm ci --omit=dev
+            printf 'MONGO_URL=%s\nPORT=%s\n' '$MONGO_URL' '${PORT:-3000}' > .env
+            if command -v pm2 >/dev/null 2>&1; then
+              pm2 restart express-mongoose-stream-app || pm2 start app.js --name express-mongoose-stream-app
+              pm2 save
+            else
+              npm start
+            fi
+          "
