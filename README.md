@@ -83,6 +83,18 @@ Chunk 5 of 5
 Stream finished
 ```
 
+### `GET /api/messages/`
+
+Returns saved message documents from MongoDB.
+
+### `POST /api/messages/`
+
+Creates a new message in MongoDB. Example request body:
+
+```json
+{ "text": "Hello from Express" }
+```
+
 ## Scripts
 
 - `npm start` - runs `node app.js`

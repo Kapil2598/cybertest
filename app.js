@@ -2,10 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const streamRouter = require('./routes/stream');
+const messagesRouter = require('./routes/messages');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URL = process.env.MONGO_URL;
+
+app.use(express.json());
 
 // Basic root route to verify the server is running
 app.get('/', (req, res) => {
@@ -14,6 +17,7 @@ app.get('/', (req, res) => {
 
 // Mount API routes
 app.use('/api/stream', streamRouter);
+app.use('/api/messages', messagesRouter);
 
 // Connect to MongoDB using Mongoose and start the server
 async function startServer() {
