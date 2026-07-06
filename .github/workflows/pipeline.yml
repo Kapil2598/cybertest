@@ -47,6 +47,22 @@ jobs:
       - name: Run checks
         run: npm test
 
+      - name: Save GitHub run to MongoDB
+        run: |
+          GITHUB_REPOSITORY="$GITHUB_REPOSITORY" \
+          GITHUB_WORKFLOW="$GITHUB_WORKFLOW" \
+          GITHUB_RUN_ID="$GITHUB_RUN_ID" \
+          GITHUB_RUN_NUMBER="$GITHUB_RUN_NUMBER" \
+          GITHUB_EVENT_NAME="$GITHUB_EVENT_NAME" \
+          GITHUB_REF_NAME="$GITHUB_REF_NAME" \
+          GITHUB_REF="$GITHUB_REF" \
+          GITHUB_SHA="$GITHUB_SHA" \
+          GITHUB_ACTOR="$GITHUB_ACTOR" \
+          GITHUB_SERVER_URL="$GITHUB_SERVER_URL" \
+          GITHUB_STATUS=success \
+          MONGO_URL="mongodb://127.0.0.1:27017/express_stream_ci" \
+          node scripts/saveGithubRun.js
+
       - name: Smoke test server
         run: |
           npm start &
