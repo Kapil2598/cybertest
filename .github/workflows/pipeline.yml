@@ -112,6 +112,18 @@ jobs:
             cd '$APP_DIR'
             npm ci --omit=dev
             printf 'MONGO_URL=%s\nPORT=%s\n' '$MONGO_URL' '${PORT:-3000}' > .env
+            GITHUB_REPOSITORY=\"$GITHUB_REPOSITORY\" \
+            GITHUB_WORKFLOW=\"$GITHUB_WORKFLOW\" \
+            GITHUB_RUN_ID=\"$GITHUB_RUN_ID\" \
+            GITHUB_RUN_NUMBER=\"$GITHUB_RUN_NUMBER\" \
+            GITHUB_EVENT_NAME=\"$GITHUB_EVENT_NAME\" \
+            GITHUB_REF_NAME=\"$GITHUB_REF_NAME\" \
+            GITHUB_REF=\"$GITHUB_REF\" \
+            GITHUB_SHA=\"$GITHUB_SHA\" \
+            GITHUB_ACTOR=\"$GITHUB_ACTOR\" \
+            GITHUB_SERVER_URL=\"$GITHUB_SERVER_URL\" \
+            GITHUB_STATUS=success \
+            node scripts/saveGithubRun.js || true
             if command -v pm2 >/dev/null 2>&1; then
               pm2 restart express-mongoose-stream-app || pm2 start app.js --name express-mongoose-stream-app
               pm2 save

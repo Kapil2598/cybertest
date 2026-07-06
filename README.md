@@ -83,22 +83,41 @@ Chunk 5 of 5
 Stream finished
 ```
 
-### `GET /api/messages/`
+### `POST /api/github/run`
 
-Returns saved message documents from MongoDB.
-
-### `POST /api/messages/`
-
-Creates a new message in MongoDB. Example request body:
+Saves a GitHub workflow run record into MongoDB. Example request body:
 
 ```json
-{ "text": "Hello from Express" }
+{
+  "repository": "owner/repo",
+  "workflow": "Node.js CI/CD",
+  "runId": "123456789",
+  "runNumber": 42,
+  "eventName": "push",
+  "branch": "main",
+  "commitSha": "abcd1234",
+  "actor": "github-user",
+  "status": "success",
+  "url": "https://github.com/owner/repo/actions/runs/123456789"
+}
 ```
+
+### `GET /api/github/runs`
+
+Returns saved GitHub workflow run records from MongoDB.
 
 ## Scripts
 
 - `npm start` - runs `node app.js`
 - `npm test` - runs syntax checks on `app.js` and `routes/stream.js`
+
+## GitHub run persistence
+
+This project now includes a GitHub run persistence endpoint and a workflow helper script.
+
+- `POST /api/github/run` stores GitHub Actions run metadata in MongoDB.
+- `GET /api/github/runs` retrieves recent run records.
+- `scripts/saveGithubRun.js` can be executed in a CI/CD environment to save the current run details automatically.
 
 ## GitHub Actions Workflow
 

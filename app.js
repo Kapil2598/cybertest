@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const streamRouter = require('./routes/stream');
-const messagesRouter = require('./routes/messages');
+const githubRouter = require('./routes/github');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
 
 // Mount API routes
 app.use('/api/stream', streamRouter);
-app.use('/api/messages', messagesRouter);
+app.use('/api/github', githubRouter);
 
 // Connect to MongoDB using Mongoose and start the server
 async function startServer() {
